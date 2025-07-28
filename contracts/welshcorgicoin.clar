@@ -6,7 +6,7 @@
 (impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
 
 ;; SIP-010 Standard
-
+;; #[allow(unchecked_data)]
 (define-public (transfer (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
     (begin
         (asserts! (is-eq from tx-sender)
@@ -37,7 +37,7 @@
     (ok (ft-get-supply welshcorgicoin)
     )
 )
-
+;; #[allow(unchecked_data)]
 (define-public (set-token-uri (value (string-utf8 256)))
     (if 
         (is-eq tx-sender contract-creator) 

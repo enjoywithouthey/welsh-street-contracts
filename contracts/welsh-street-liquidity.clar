@@ -5,6 +5,8 @@
 (define-constant ERR_NOT_CONTRACT_OWNER (err u701))
 (define-constant ERR_NOT_TOKEN_OWNER (err u702))
 (define-constant ERR_ZERO_AMOUNT (err u703))
+(define-constant ERR_FORCE_KNOWN_ERROR (err u704))
+(define-constant ERR_NEGATIVE_BURN (err u705))
 
 (define-constant CONTRACT_OWNER tx-sender)
 (define-constant TOKEN_URI u"")
@@ -14,26 +16,70 @@
 
 (define-data-var total-supply uint u0)
 
-(define-map holders { account: principal } { balance: uint })
+(define-data-var provider-count uint u0)
 
-(define-public (burn (amount uint))
-  (begin
-    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
-    (asserts! (> amount u0) ERR_ZERO_AMOUNT)
-    (try! (ft-burn? cred-lp-token amount tx-sender))
-    (var-set total-supply (- (var-get total-supply) amount))
-    (ok amount)
+(define-map lp-balances { account: principal } uint)
+
+(define-private (update-lp-balance (user principal) (amount uint))
+    (begin
+      (asserts! (>= amount u0) ERR_NEGATIVE_BURN)
+      (if (> amount u0)
+        (begin
+          (map-set lp-balances { account: user } amount)
+          (var-set provider-count (+ (var-get provider-count) u1))
+        )
+        true
+      )
+
+      (if (is-eq amount u0)
+        (begin
+          (map-delete lp-balances { account: user })
+          (var-set provider-count (- (var-get provider-count) u1))
+        )
+        true
+      )
+
+      (if false
+        ERR_FORCE_KNOWN_ERROR
+        (ok true)
+      )
+    )
   )
-)
 
-(define-public (mint (amount uint))
+
+;; #[allow(unchecked_data)]
+(define-public (mint (recipient principal) (amount uint))
+  (let (
+      (prev-balance (default-to u0 (map-get? lp-balances { account: recipient })))
+      (new-balance (+ prev-balance amount))
+    )
     (begin
       (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
       (asserts! (> amount u0) ERR_ZERO_AMOUNT)
-      (try! (ft-mint? cred-lp-token amount tx-sender))
+      (try! (ft-mint? cred-lp-token amount recipient))
       (var-set total-supply (+ (var-get total-supply) amount))
-      (ok amount)
+      (try! (update-lp-balance recipient new-balance))
+      (ok {minted: amount})
     )
+  )
+)
+
+;; #[allow(unchecked_data)]
+(define-public (burn (recipient principal) (amount uint))
+  (let (
+    (prev-balance (default-to u0 (map-get? lp-balances { account: recipient })))
+    (new-balance (- prev-balance amount))
+  )
+    (begin
+      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+      (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+      (asserts! (>= prev-balance amount) ERR_NEGATIVE_BURN)
+      (try! (update-lp-balance recipient new-balance))
+      (try! (ft-burn? cred-lp-token amount recipient))
+      (var-set total-supply (- (var-get total-supply) amount))
+      (ok {burned: amount})
+    )
+  )
 )
 
 ;; #[allow(unchecked_data)]
@@ -72,3 +118,11 @@
 
 (define-read-only (get-token-uri) 
   (ok (some TOKEN_URI)))
+
+(define-read-only (get-provider-count)
+  (ok (var-get provider-count))
+)
+
+(define-read-only (get-user-lp-balance (user principal))
+  (default-to u0 (map-get? lp-balances { account: user }))
+)

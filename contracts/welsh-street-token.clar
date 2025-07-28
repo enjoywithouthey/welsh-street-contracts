@@ -29,21 +29,27 @@
 (define-data-var last-mint-block uint u1)
 (define-data-var circulating-supply uint u0)
 
-(define-private (mint (amount uint))
-  (begin
-    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
-    (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
-    (ft-mint? street-token amount tx-sender)
-  )
-)
+;; (define-private (mint (amount uint))
+;;   (begin
+;;     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+;;     (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
+;;     (ft-mint? street-token amount REWARDS)
+;;   )
+;; )
 
 (define-public (bulk-mint)
-  (begin
-    (asserts! (< (var-get bulk-mint-counter) BULK_MINT_CAP) ERR_NO_MORE_BULK_MINTS)
-    (try! (mint BULK_MINT_QTY))
-    (var-set bulk-mint-counter (+ (var-get bulk-mint-counter) u1))
-    (var-set circulating-supply (+ (var-get circulating-supply) BULK_MINT_QTY))
-    (ok {bulk-mints-remaining: (- BULK_MINT_CAP (var-get bulk-mint-counter)), circulating-supply: (var-get circulating-supply)})     
+  (let (
+      (amount BULK_MINT_QTY)
+    )
+    (begin
+      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+      (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
+      (asserts! (< (var-get bulk-mint-counter) BULK_MINT_CAP) ERR_NO_MORE_BULK_MINTS)
+      (try! (ft-mint? street-token amount tx-sender))
+      (var-set bulk-mint-counter (+ (var-get bulk-mint-counter) u1))
+      (var-set circulating-supply (+ (var-get circulating-supply) BULK_MINT_QTY))
+      (ok {bulk-mints-remaining: (- BULK_MINT_CAP (var-get bulk-mint-counter)), circulating-supply: (var-get circulating-supply)})     
+    )
   )
 )
 
@@ -54,9 +60,11 @@
       (amount (var-get emission-amount))
     )
     (begin
+      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+      (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
       (asserts! (not (is-eq current-block last-mint)) ERR_EMISSION_INTERVAL)
       (asserts! (< (var-get emission-epoch) EMISSION_EPOCHS) ERR_EMISSION_EPOCHS)
-      (try! (mint amount))
+      (try! (ft-mint? street-token amount .welsh-street-rewards))
       (var-set circulating-supply (+ (var-get circulating-supply) amount))
       (var-set emission-epoch (+ (var-get emission-epoch) u1))
       (var-set last-mint-block current-block)
