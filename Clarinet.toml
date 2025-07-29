@@ -27,11 +27,6 @@ path = 'contracts/welsh-street-token.clar'
 clarity_version = 3
 epoch = 3.1
 
-[contracts.welsh-token]
-path = 'contracts/welsh-token.clar'
-clarity_version = 3
-epoch = 3.1
-
 [contracts.welshcorgicoin]
 path = 'contracts/welshcorgicoin.clar'
 clarity_version = 3

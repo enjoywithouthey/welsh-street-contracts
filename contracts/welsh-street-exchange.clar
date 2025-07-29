@@ -1,4 +1,5 @@
 ;; Welsh Street Exchange by @enjoywithouthey
+
 (define-constant ERR_NOT_CONTRACT_OWNER (err u601))
 (define-constant ERR_NOT_TOKEN_OWNER (err u602))
 (define-constant ERR_INITIALIZED (err u603))
