@@ -1,60 +1,84 @@
 ;; Welsh Street Exchange by @enjoywithouthey
+(use-trait sip-010 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
 
 (define-constant ERR_NOT_CONTRACT_OWNER (err u601))
 (define-constant ERR_NOT_TOKEN_OWNER (err u602))
-(define-constant ERR_INITIALIZED (err u603))
+(define-constant ERR_NOT_INITIALIZED (err u603))
 (define-constant ERR_SLIPPAGE_EXCEEDED (err u604))
+(define-constant ERR_ZERO_AMOUNT (err u605))
+(define-constant ERR_NO_TOKEN_TO_BURN (err u606))
+(define-constant ERR_TOKEN_SUPPLY_NOT_AVAILABLE (err u607))
 
 (define-constant CONTRACT_OWNER tx-sender)
-(define-constant RATIO u100) ;; 1 token-a : 100 token-b
+(define-constant INITIALIZE_RATIO u100) ;; 1 token-a : 100 token-b
 (define-constant SLIPPAGE_BASIS u10000)
-(define-constant TAX u10000) ;; 10% tax on liquidity withdrawals
+(define-constant TAX u1000) ;; 10% tax on liquidity withdrawals
 
 (define-data-var is-initialized bool false)
 (define-data-var reserve-a uint u0)
 (define-data-var reserve-b uint u0)
 (define-data-var swap-fee uint u990) ;; 1%
 
-;; #[allow(unchecked_data)]
-(define-public (initial-liquidity (amount-a uint))
+(define-public (burn-liquidity (amount uint))
   (let (
-    (amount-b (* amount-a RATIO))
-    (amount-lp (* amount-a amount-b))
-  )
+      (contract-principal (as-contract tx-sender))
+      (burn-balance (unwrap! (as-contract (contract-call? .welsh-street-liquidity get-balance contract-principal)) (err u110)))
+    )
     (begin
-      (asserts! (is-eq (var-get is-initialized) false) ERR_INITIALIZED)
-      (try! (contract-call? .welsh-street-liquidity mint .welsh-street-exchange amount-lp))
-      (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .welsh-street-exchange none))
-      (try! (contract-call? .welsh-street-token transfer amount-b tx-sender .welsh-street-exchange none))
-
-      (var-set reserve-a amount-a)
-      (var-set reserve-b amount-b)
-      (var-set is-initialized true)
-
-      (ok { added-a: amount-a, added-b: amount-b })
+      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+      (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+      (asserts! (>= burn-balance amount) ERR_NO_TOKEN_TO_BURN)
+      (as-contract (contract-call? .welsh-street-liquidity burn amount))
     )
   )
 )
 
 ;; #[allow(unchecked_data)]
-(define-public (provide-liquidity (amount-a uint) (amount-lp uint))
+(define-public (initial-liquidity (amount-a uint))
   (let (
-    (res-a (var-get reserve-a))
-    (res-b (var-get reserve-b))
-    (lp-supply (unwrap! (contract-call? .welsh-street-liquidity get-total-supply) (err u110)))
-    (amount-b (/ (* amount-a res-b) res-a))
+    (amount-b (* amount-a INITIALIZE_RATIO))
+    (amount-lp (sqrti (* amount-a amount-b)))
   )
     (begin
-      (try! (contract-call? .welsh-street-liquidity mint tx-sender amount-lp))
-      (try! (contract-call? .welsh-street-liquidity transfer amount-lp .welsh-street-exchange tx-sender none))
+      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+      (asserts! (is-eq (var-get is-initialized) false) ERR_NOT_INITIALIZED)
+      (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
+      (try! (as-contract (contract-call? .welsh-street-liquidity mint amount-lp)))
       (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .welsh-street-exchange none))
-      (try! (contract-call? .welsh-street-token transfer amount-b tx-sender .welsh-street-exchange none))
+      (try! (contract-call? .street-token transfer amount-b tx-sender .welsh-street-exchange none))
 
-      ;; External contract mints LP token, assume it matches amount-lp
+      (var-set reserve-a amount-a)
+      (var-set reserve-b amount-b)
+      (var-set is-initialized true)
+
+      (ok { added-a: amount-a, added-b: amount-b, minted-lp: amount-lp })
+    )
+  )
+)
+
+;; #[allow(unchecked_data)]
+(define-public (provide-liquidity (amount-a uint))
+  (begin
+    (asserts! (is-eq (var-get is-initialized) true) ERR_NOT_INITIALIZED)
+    (let (
+      (res-a (var-get reserve-a))
+      (res-b (var-get reserve-b))
+      (lp-supply (unwrap! (contract-call? .welsh-street-liquidity get-total-supply) ERR_TOKEN_SUPPLY_NOT_AVAILABLE))
+      (amount-b (/ (* amount-a res-b) res-a))
+      (lp-from-a (/ (* amount-a lp-supply) res-a))
+      (lp-from-b (/ (* amount-b lp-supply) res-b))
+      (amount-lp (if (< lp-from-a lp-from-b) lp-from-a lp-from-b))
+    )
+    (begin
+      (try! (contract-call? .welsh-street-liquidity mint amount-lp))
+      (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .welsh-street-exchange none))
+      (try! (contract-call? .street-token transfer amount-b tx-sender .welsh-street-exchange none))
       (var-set reserve-a (+ res-a amount-a))
       (var-set reserve-b (+ res-b amount-b))
-
-      (ok { amount-a: amount-a, amount-b: amount-b, minted: amount-lp })
+      (ok { added-a: amount-a, 
+            added-b: amount-b, 
+            minted-lp: amount-lp })
+      )
     )
   )
 )
@@ -64,24 +88,27 @@
   (let (
     (res-a (var-get reserve-a))
     (res-b (var-get reserve-b))
-    (lp-supply (unwrap! (contract-call? .welsh-street-liquidity get-total-supply) (err u110)))
-    (amount-a (/ (* amount-lp res-a) lp-supply))
-    (amount-b (/ (* amount-lp res-b) lp-supply))
-    (tax-a (/ (* amount-a TAX) u10000))
-    (tax-b (/ (* amount-b TAX) u10000))
-    (user-a (- amount-a tax-a))
-    (user-b (- amount-b tax-b))
+    (lp-supply (unwrap! (contract-call? .welsh-street-liquidity get-total-supply) ERR_TOKEN_SUPPLY_NOT_AVAILABLE))
+    (tax-lp (/ (* amount-lp TAX) u10000)) ;; TAX is in basis points (e.g., 1000 = 10%)
+    (user-lp (- amount-lp tax-lp))
+    (amount-a (/ (* user-lp res-a) lp-supply))
+    (amount-b (/ (* user-lp res-b) lp-supply))
   )
     (begin
+      (asserts! (> amount-lp u0) ERR_ZERO_AMOUNT)
       (try! (contract-call? .welsh-street-liquidity transfer amount-lp tx-sender .welsh-street-exchange none))
-      (try! (contract-call? .welsh-street-liquidity burn tx-sender amount-lp))
-      (try! (contract-call? .welshcorgicoin transfer user-a .welsh-street-exchange tx-sender none))
-      (try! (contract-call? .welsh-street-token transfer user-b .welsh-street-exchange tx-sender none))
+      (try! (as-contract (contract-call? .welsh-street-liquidity burn user-lp)))
+      (try! (as-contract (contract-call? .welsh-street-liquidity burn tax-lp)))
+      (try! (transformer .welshcorgicoin amount-a tx-sender))
+      (try! (transformer .street-token amount-b tx-sender))
 
-      ;; Only the user's share is subtracted from reserves; tax stays in reserves
-      (var-set reserve-a (- res-a user-a))
-      (var-set reserve-b (- res-b user-b))
-      (ok { amount-a: user-a, amount-b: user-b, tax-a: tax-a, tax-b: tax-b, burned: amount-lp })
+      (var-set reserve-a (if (>= res-a amount-a) (- res-a amount-a) u0))
+      (var-set reserve-b (if (>= res-b amount-b) (- res-b amount-b) u0))
+      (ok { burned-lp: user-lp,
+            taxed-lp: tax-lp,
+            user-a: amount-a,
+            user-b: amount-b
+      })
     )
   )
 )
@@ -103,12 +130,11 @@
     (min-acceptable (/ (* b-out-net (- SLIPPAGE_BASIS max-slippage-bps)) SLIPPAGE_BASIS))
   )
     (begin
-      (asserts! (>= b-out-net min-acceptable) ERR_SLIPPAGE_EXCEEDED )
-
+      (asserts! (>= b-out-net min-acceptable) ERR_SLIPPAGE_EXCEEDED)
       (try! (contract-call? .welshcorgicoin transfer a-in tx-sender .welsh-street-exchange none))
       (try! (contract-call? .welshcorgicoin transfer a-fee tx-sender .welsh-street-rewards none))
-      (try! (contract-call? .welsh-street-token transfer b-fee tx-sender .welsh-street-rewards none))
-      (try! (contract-call? .welsh-street-token transfer b-out-net .welsh-street-exchange tx-sender none))
+      (try! (contract-call? .street-token transfer b-fee tx-sender .welsh-street-rewards none))
+      (try! (contract-call? .street-token transfer b-out-net .welsh-street-exchange tx-sender none))
       (try! (contract-call? .welsh-street-rewards update-rewards-a a-fee))
       (try! (contract-call? .welsh-street-rewards update-rewards-b b-fee))
       (var-set reserve-a (+ res-a a-in-net))
@@ -136,10 +162,9 @@
     (min-acceptable (/ (* a-out-net (- SLIPPAGE_BASIS max-slippage-bps)) SLIPPAGE_BASIS))
   )
     (begin
-      (asserts! (>= a-out-net min-acceptable) ERR_SLIPPAGE_EXCEEDED )
-
-      (try! (contract-call? .welsh-street-token transfer b-in tx-sender .welsh-street-exchange none))
-      (try! (contract-call? .welsh-street-token transfer b-fee tx-sender .welsh-street-rewards none))
+      (asserts! (>= a-out-net min-acceptable) ERR_SLIPPAGE_EXCEEDED)
+      (try! (contract-call? .street-token transfer b-in tx-sender .welsh-street-exchange none))
+      (try! (contract-call? .street-token transfer b-fee tx-sender .welsh-street-rewards none))
       (try! (contract-call? .welshcorgicoin transfer a-fee tx-sender .welsh-street-rewards none))
       (try! (contract-call? .welshcorgicoin transfer a-out-net .welsh-street-exchange tx-sender none))
       (try! (contract-call? .welsh-street-rewards update-rewards-a a-fee))
@@ -164,4 +189,12 @@
 
 (define-public (get-liquidity-name)
   (ok (unwrap! (contract-call? .welsh-street-liquidity get-name) (err u999)))
+)
+
+(define-public (transformer
+    (token <sip-010>)
+    (amount uint)
+    (to principal)
+  )
+  (as-contract (contract-call? token transfer amount tx-sender to none))
 )

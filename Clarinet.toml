@@ -7,6 +7,7 @@ cache_dir = './.cache'
 
 [[project.requirements]]
 contract_id = 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard'
+
 [contracts.welsh-street-exchange]
 path = 'contracts/welsh-street-exchange.clar'
 clarity_version = 3
@@ -22,8 +23,8 @@ path = 'contracts/welsh-street-rewards.clar'
 clarity_version = 3
 epoch = 3.1
 
-[contracts.welsh-street-token]
-path = 'contracts/welsh-street-token.clar'
+[contracts.street-token]
+path = 'contracts/street-token.clar'
 clarity_version = 3
 epoch = 3.1
 

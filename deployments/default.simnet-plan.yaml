@@ -68,14 +68,14 @@ plan:
     - id: 1
       transactions:
         - emulated-contract-publish:
+            contract-name: street-token
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/street-token.clar
+            clarity-version: 3
+        - emulated-contract-publish:
             contract-name: welsh-street-liquidity
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/welsh-street-liquidity.clar
-            clarity-version: 3
-        - emulated-contract-publish:
-            contract-name: welsh-street-token
-            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/welsh-street-token.clar
             clarity-version: 3
         - emulated-contract-publish:
             contract-name: welshcorgicoin

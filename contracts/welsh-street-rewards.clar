@@ -1,5 +1,5 @@
-;; title: welsh-street-rewards
-;; description: collects the swap fees from the exchange and the $STREET mints into a reward pool for $CRED holders.
+;; title: Welsh Street Rewards
+;; description: The Rewards contract collectes taxes, fees, and emissions then rewards them to liquidity providers.
 
 (define-constant CONTRACT_OWNER tx-sender)
 
@@ -49,7 +49,7 @@
 (define-public (update-rewards-b (amount uint))
   (let (
      (total-lp (unwrap! (contract-call? .welsh-street-liquidity get-total-supply) ERR_SUPPLY_NOT_AVAILABLE ))
-     (current-rewards (unwrap! (contract-call? .welsh-street-token get-balance .welsh-street-rewards) ERR_SUPPLY_NOT_AVAILABLE ))
+     (current-rewards (unwrap! (contract-call? .street-token get-balance .welsh-street-rewards) ERR_SUPPLY_NOT_AVAILABLE ))
     )
     (begin
       (asserts! (> total-lp u0) (err u100))
@@ -82,7 +82,7 @@
         true
       )
       (if (> claim-b u0)
-        (try! (contract-call? .welsh-street-token transfer claim-b .welsh-street-rewards tx-sender none))
+        (try! (contract-call? .street-token transfer claim-b .welsh-street-rewards tx-sender none))
         true
       )
       (map-set user-info { account: tx-sender } {
@@ -94,7 +94,6 @@
     )
   )
 )
-
 
 (define-private (get-total-lp-supply)
   (let (
@@ -109,7 +108,7 @@
 
 (define-private (get-reward-pool-balances)
     (let (
-        (street-balance (unwrap! (contract-call? .welsh-street-token get-balance (as-contract tx-sender)) ERR_STREET_BALANCE_NOT_AVAILABLE ))
+        (street-balance (unwrap! (contract-call? .street-token get-balance (as-contract tx-sender)) ERR_STREET_BALANCE_NOT_AVAILABLE ))
         (welsh-balance (unwrap! (contract-call? .welshcorgicoin get-balance (as-contract tx-sender)) ERR_WELSH_BALANCE_NOT_AVAILABLE ))
     )
     (begin 

@@ -1,12 +1,16 @@
-;; Welsh Street Token by @enjoywithouthey
+;; title: Welsh Street Token
+;; description: $STREET is the rewards token for the Welsh Street Exchange.
+
 (impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+;; (impl-trait .welsh-street-transformer-trait.transformer-trait)
+;; (use-trait transformer-trait .welsh-street-transformer-trait.transformer-trait)
 
 (define-fungible-token street-token)
 
 (define-constant ERR_NOT_CONTRACT_OWNER (err u901))
 (define-constant ERR_NOT_TOKEN_OWNER (err u902))
 (define-constant ERR_EXCEEDS_TOTAL_SUPPLY (err u903))
-(define-constant ERR_NO_MORE_BULK_MINTS (err u904))
+(define-constant ERR_NO_MORE_COMMUNITY_MINT (err u904))
 (define-constant ERR_EMISSION_EPOCHS (err u905))
 (define-constant ERR_EMISSION_INTERVAL (err u906))
 
@@ -16,40 +20,27 @@
 
 (define-constant TOKEN_NAME "Welsh Street Token")
 (define-constant TOKEN_SYMBOL "STREET")
-(define-constant TOKEN_DECIMALS u6) ;;1.000_000 = 1 token
-(define-constant TOKEN_SUPPLY u10000000000000000)
-(define-constant BULK_MINT_QTY u1000000000000000)
-(define-constant BULK_MINT_CAP u4)
-(define-constant EMISSION_EPOCHS u3) ;;420000 on mainnet
+(define-constant TOKEN_DECIMALS u6)
+(define-constant TOKEN_SUPPLY u10000000000000000) ;;10_000_000_000
+(define-constant COMMUNITY_MINT_CAP u4000000000000000) ;;4_000_000_000
+(define-constant EMISSION_EPOCHS u13) ;;420000 on mainnet
 (define-constant EMISSION_INTERVAL u1)
 
-(define-data-var bulk-mint-counter uint u0)
 (define-data-var emission-epoch uint u0)
-(define-data-var emission-amount uint u100)
+(define-data-var emission-amount uint u1000000000000000) ;;THIS VALUE FOR TESTING need halving equation
 (define-data-var last-mint-block uint u1)
 (define-data-var circulating-supply uint u0)
+(define-data-var community-minted uint u0)
 
-;; (define-private (mint (amount uint))
-;;   (begin
-;;     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
-;;     (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
-;;     (ft-mint? street-token amount REWARDS)
-;;   )
-;; )
-
-(define-public (bulk-mint)
-  (let (
-      (amount BULK_MINT_QTY)
-    )
-    (begin
-      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
-      (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
-      (asserts! (< (var-get bulk-mint-counter) BULK_MINT_CAP) ERR_NO_MORE_BULK_MINTS)
-      (try! (ft-mint? street-token amount tx-sender))
-      (var-set bulk-mint-counter (+ (var-get bulk-mint-counter) u1))
-      (var-set circulating-supply (+ (var-get circulating-supply) BULK_MINT_QTY))
-      (ok {bulk-mints-remaining: (- BULK_MINT_CAP (var-get bulk-mint-counter)), circulating-supply: (var-get circulating-supply)})     
-    )
+(define-public (community-mint (amount uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+    (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
+    (asserts! (<= (var-get community-minted) COMMUNITY_MINT_CAP) ERR_NO_MORE_COMMUNITY_MINT)
+    (try! (ft-mint? street-token amount tx-sender))
+    (var-set community-minted (+ (var-get community-minted) amount))
+    (var-set circulating-supply (+ (var-get circulating-supply) amount))
+    (ok {community-mint-remaining: (- COMMUNITY_MINT_CAP (var-get community-minted)), circulating-supply: (var-get circulating-supply)})     
   )
 )
 
@@ -73,13 +64,12 @@
   )
 )
 
-;; Sender must be the same as the caller to prevent principals from transferring tokens they do not own.
 (define-public (transfer
     (amount uint)
     (sender principal)
     (recipient principal)
     (memo (optional (buff 34)))
-  ) ;; 34
+  ) 
   (begin
     ;; #[filter(amount, recipient)]
     (asserts! (is-eq tx-sender sender) ERR_NOT_TOKEN_OWNER)
@@ -92,17 +82,17 @@
   )
 )
 
-(define-read-only (get-balance (who principal))
-  (ok (ft-get-balance street-token who)))
-
-(define-read-only (get-total-supply)
-  (ok (ft-get-supply street-token)))
-
 (define-read-only (get-circulating-supply)
   (ok (var-get circulating-supply)))
 
 (define-read-only (get-current-epoch)
   (ok (var-get emission-epoch)))
+
+(define-read-only (get-balance (who principal))
+  (ok (ft-get-balance street-token who)))
+
+(define-read-only (get-total-supply)
+  (ok (ft-get-supply street-token)))
 
 (define-read-only (get-name)
   (ok TOKEN_NAME))
