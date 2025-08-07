@@ -1,28 +1,39 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
+import { disp, COMMUNITY_MINT_CAP } from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 const wallet1 = accounts.get("wallet_1")!;
-const disp = true;
 
 describe("exchange provide liquidity", () => {
   it("wallet1 tries to provide liquidity without pool initialized", () => {
+
+    const COMMUNITY_MINT_AMOUNT = 1000000000000000
+    let circulatingSupply = 0;
+    let communityMinted = 0;
+
     const communityMint = simnet.callPublicFn(
       "street-token",
       "community-mint",
-      [],
+      [Cl.uint(COMMUNITY_MINT_AMOUNT)],
       deployer
     );
+
+    circulatingSupply = circulatingSupply + COMMUNITY_MINT_AMOUNT;
+    communityMinted = communityMinted + COMMUNITY_MINT_AMOUNT;
+
     expect(communityMint.result).toEqual(
       Cl.ok(
         Cl.tuple({
-          "community-mints-remaining": Cl.uint(3),
-          "circulating-supply": Cl.uint(1000000000000000),
+          "community-mint-remaining": Cl.uint(COMMUNITY_MINT_CAP - communityMinted),
+          "circulating-supply": Cl.uint(circulatingSupply),
         })
       )
     );
     if (disp) {console.log("communityMint:", JSON.stringify(communityMint.result, null, 2))}
+    if (disp) {console.log("circulatingSupply: ",circulatingSupply)}
+    if (disp) {console.log("communityMinted: ", communityMinted)}
 
     const TRANSFER_WELSH = 100000
     const TRANSFER_STREET = TRANSFER_WELSH * 100
@@ -64,21 +75,31 @@ describe("exchange provide liquidity", () => {
   });
 
   it("wallet provides liquidity after pool initialized", () => {
+    const COMMUNITY_MINT_AMOUNT = 1000000000000000
+    let circulatingSupply = 0;
+    let communityMinted = 0;
+
     const communityMint = simnet.callPublicFn(
       "street-token",
       "community-mint",
-      [],
+      [Cl.uint(COMMUNITY_MINT_AMOUNT)],
       deployer
     );
+
+    circulatingSupply = circulatingSupply + COMMUNITY_MINT_AMOUNT;
+    communityMinted = communityMinted + COMMUNITY_MINT_AMOUNT;
+
     expect(communityMint.result).toEqual(
       Cl.ok(
         Cl.tuple({
-          "community-mints-remaining": Cl.uint(3),
-          "circulating-supply": Cl.uint(1000000000000000),
+          "community-mint-remaining": Cl.uint(COMMUNITY_MINT_CAP - communityMinted),
+          "circulating-supply": Cl.uint(circulatingSupply),
         })
       )
     );
     if (disp) {console.log("communityMint:", JSON.stringify(communityMint.result, null, 2))}
+    if (disp) {console.log("circulatingSupply: ",circulatingSupply)}
+    if (disp) {console.log("communityMinted: ", communityMinted)}
 
     const TRANSFER_WELSH = 100000
     const TRANSFER_STREET = TRANSFER_WELSH * 100

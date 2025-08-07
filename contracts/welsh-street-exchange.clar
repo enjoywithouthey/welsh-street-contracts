@@ -11,13 +11,13 @@
 
 (define-constant CONTRACT_OWNER tx-sender)
 (define-constant INITIALIZE_RATIO u100) ;; 1 token-a : 100 token-b
-(define-constant SLIPPAGE_BASIS u10000)
+(define-constant FEE_BASIS u10000)
 (define-constant TAX u1000) ;; 10% tax on liquidity withdrawals
 
 (define-data-var is-initialized bool false)
 (define-data-var reserve-a uint u0)
 (define-data-var reserve-b uint u0)
-(define-data-var swap-fee uint u990) ;; 1%
+(define-data-var swap-fee uint u100) ;; 100 is 1% at 10000 basis points
 
 (define-public (burn-liquidity (amount uint))
   (let (
@@ -113,53 +113,62 @@
   )
 )
 
+(define-constant ERR_1 (err u101))
+(define-constant ERR_2 (err u102))
+(define-constant ERR_3 (err u103))
+(define-constant ERR_4 (err u104))
+(define-constant ERR_5 (err u105))
+(define-constant ERR_6 (err u106))
+
 ;; #[allow(unchecked_data)]
-(define-public (swap-a-for-b (a-in uint) (max-slippage-bps uint))
+(define-public (swap-a-for-b (a-in uint) (slip-max uint))
   (let (
     (res-a (var-get reserve-a))
     (res-b (var-get reserve-b))
-    (fee (var-get swap-fee))
-    (a-fee (- a-in (/ (* a-in fee) u1000))) ;; fee on a-in
+    (exp (/ (* a-in res-b) res-a))
+    (fee (var-get swap-fee)) 
+    (a-fee (/ (* a-in fee) FEE_BASIS)) 
     (a-in-net (- a-in a-fee))
-    (a-in-with-fee (* a-in-net fee))
-    (numerator (* a-in-with-fee res-b))
-    (denominator (+ (* res-a u1000) a-in-with-fee))
-    (b-out (/ numerator denominator))
-    (b-fee (- b-out (/ (* b-out fee) u1000))) ;; fee on b-out
-    (b-out-net (- b-out b-fee))
-    (min-acceptable (/ (* b-out-net (- SLIPPAGE_BASIS max-slippage-bps)) SLIPPAGE_BASIS))
+    (a-in-with-fee (* a-in (- FEE_BASIS fee)))
+    (num (* a-in-with-fee res-b))
+    (den (+ (* res-a FEE_BASIS) a-in-with-fee))
+    (b-out (/ num den))
+    (slip (/ (* (- exp b-out) FEE_BASIS) exp)) 
+    (min-a (/ (* b-out (- FEE_BASIS slip-max)) FEE_BASIS))
   )
     (begin
-      (asserts! (>= b-out-net min-acceptable) ERR_SLIPPAGE_EXCEEDED)
-      (try! (contract-call? .welshcorgicoin transfer a-in tx-sender .welsh-street-exchange none))
-      (try! (contract-call? .welshcorgicoin transfer a-fee tx-sender .welsh-street-rewards none))
-      (try! (contract-call? .street-token transfer b-fee tx-sender .welsh-street-rewards none))
-      (try! (contract-call? .street-token transfer b-out-net .welsh-street-exchange tx-sender none))
-      (try! (contract-call? .welsh-street-rewards update-rewards-a a-fee))
-      (try! (contract-call? .welsh-street-rewards update-rewards-b b-fee))
+      (print {res-a: res-a, res-b: res-b, slip: slip, slip-max: slip-max})
+      (asserts! (<= slip slip-max) ERR_SLIPPAGE_EXCEEDED)
+      (asserts! (is-ok ( contract-call? .welshcorgicoin transfer a-in tx-sender .welsh-street-exchange none)) ERR_1)
+      (asserts! (is-ok ( transformer .welshcorgicoin a-fee .welsh-street-rewards)) ERR_2)
+      (asserts! (is-ok ( transformer .street-token b-out tx-sender)) ERR_4)
+      (asserts! (is-ok ( contract-call? .welsh-street-rewards update-rewards-a a-fee)) ERR_5)
       (var-set reserve-a (+ res-a a-in-net))
-      (var-set reserve-b (- res-b b-out-net))
-
-      (ok { swapped-in: a-in, swapped-out: b-out-net, fee-a: a-fee, fee-b: b-fee })
+      (var-set reserve-b (- res-b b-out))
+      
+      (print { act: b-out, exp: exp, slip: slip})
+      (print { b-out: b-out, min-a: min-a })
+      (ok { fee-a: a-fee, swap-in: a-in, swap-out: b-out })
     )
   )
 )
 
+;; (try! (transformer .street-token amount-b tx-sender))
 ;; #[allow(unchecked_data)]
 (define-public (swap-b-for-a (b-in uint) (max-slippage-bps uint))
   (let (
     (res-a (var-get reserve-a))
     (res-b (var-get reserve-b))
     (fee (var-get swap-fee))
-    (b-fee (- b-in (/ (* b-in fee) u1000)))
+    (b-fee (/ (* b-in fee) u1000))
     (b-in-net (- b-in b-fee))
-    (b-in-with-fee (* b-in-net fee))
-    (numerator (* b-in-with-fee res-a))
-    (denominator (+ (* res-b u1000) b-in-with-fee))
+    (amount-in-with-fee (* b-in-net u1000))
+    (numerator (* amount-in-with-fee res-a))
+    (denominator (+ (* res-b u1000) amount-in-with-fee))
     (a-out (/ numerator denominator))
-    (a-fee (- a-out (/ (* a-out fee) u1000)))
+    (a-fee (/ (* a-out fee) u1000))
     (a-out-net (- a-out a-fee))
-    (min-acceptable (/ (* a-out-net (- SLIPPAGE_BASIS max-slippage-bps)) SLIPPAGE_BASIS))
+    (min-acceptable (/ (* a-out-net (- FEE_BASIS max-slippage-bps)) FEE_BASIS))
   )
     (begin
       (asserts! (>= a-out-net min-acceptable) ERR_SLIPPAGE_EXCEEDED)

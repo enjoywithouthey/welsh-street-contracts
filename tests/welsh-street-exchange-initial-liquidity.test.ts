@@ -1,10 +1,14 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
+import { disp, COMMUNITY_MINT_CAP } from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 const wallet1 = accounts.get("wallet_1")!;
-const disp = true;
+
+const COMMUNITY_MINT_AMOUNT = 1000000000000000
+let circulatingSupply = 0;
+let communityMinted = 0;
 
 describe("exchange initial liquidity", () => {
   it("mint $WELSH, mint $STREET, deployer provide initial LP", () => {
@@ -20,13 +24,17 @@ describe("exchange initial liquidity", () => {
     const communityMint = simnet.callPublicFn(
       "street-token",
       "community-mint",
-      [],
+      [Cl.uint(COMMUNITY_MINT_AMOUNT)],
       deployer);
+
+    circulatingSupply = circulatingSupply + COMMUNITY_MINT_AMOUNT;
+    communityMinted = communityMinted + COMMUNITY_MINT_AMOUNT;
+
     expect(communityMint.result).toEqual(
     Cl.ok(
       Cl.tuple({
-        "community-mints-remaining": Cl.uint(3),
-        "circulating-supply": Cl.uint(1000000000000000),
+        "circulating-supply": Cl.uint(circulatingSupply),
+        "community-mint-remaining": Cl.uint(COMMUNITY_MINT_CAP - communityMinted),
         })
       )
     );
@@ -37,9 +45,10 @@ describe("exchange initial liquidity", () => {
       "get-balance",
       [Cl.standardPrincipal(deployer)],
       deployer);
-    expect(communityMintBalance.result).toBeOk(Cl.uint(1000000000000000));
-    if (disp) {console.log("communityMintBalance:", Cl.uint(1000000000000000))}
+    expect(communityMintBalance.result).toBeOk(Cl.uint(COMMUNITY_MINT_AMOUNT));
+    if (disp) {console.log("communityMintBalance:", Cl.uint(COMMUNITY_MINT_AMOUNT ))}
 
+    // Provide initial liquidity
     const INITIAL_WELSH = 1000000;
     const INITIAL_STREET = INITIAL_WELSH * 100;
     const INITIAL_LP = Math.floor(Math.sqrt(INITIAL_WELSH * INITIAL_STREET));
@@ -113,13 +122,14 @@ it("Provide initial LP, check lp-balances, burn LP, verify lp-balances", () => {
     const communityMint = simnet.callPublicFn(
       "street-token",
       "community-mint",
-      [],
+      [Cl.uint(COMMUNITY_MINT_AMOUNT)],
       deployer);
+
     expect(communityMint.result).toEqual(
     Cl.ok(
       Cl.tuple({
-        "community-mints-remaining": Cl.uint(3),
-        "circulating-supply": Cl.uint(1000000000000000),
+        "circulating-supply": Cl.uint(circulatingSupply),
+        "community-mint-remaining": Cl.uint(COMMUNITY_MINT_CAP - communityMinted),
         })
       )
     );
@@ -206,13 +216,13 @@ it("Provide initial LP, check lp-balances, burn LP, verify lp-balances", () => {
     const communityMint = simnet.callPublicFn(
       "street-token",
       "community-mint",
-      [],
+      [Cl.uint(COMMUNITY_MINT_AMOUNT)],
       deployer);
     expect(communityMint.result).toEqual(
     Cl.ok(
       Cl.tuple({
-        "community-mints-remaining": Cl.uint(3),
-        "circulating-supply": Cl.uint(1000000000000000),
+        "circulating-supply": Cl.uint(circulatingSupply),
+        "community-mint-remaining": Cl.uint(COMMUNITY_MINT_CAP - communityMinted),
         })
       )
     );

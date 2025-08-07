@@ -12,7 +12,7 @@
         (asserts! (is-eq from tx-sender)
             (err ERR-UNAUTHORIZED))
 
-        (print { from: from, tx-sender: tx-sender, to: to, amount: amount })
+        ;;(print { from: from, tx-sender: tx-sender, to: to, amount: amount })
 
         (ft-transfer? welshcorgicoin amount from to)
     )

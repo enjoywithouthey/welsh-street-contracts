@@ -1,30 +1,41 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
+import { disp, COMMUNITY_MINT_CAP } from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 const wallet1 = accounts.get("wallet_1")!;
 const wallet2 = accounts.get("wallet_2")!;
-const disp = true;
 
 describe("exchange provide liquidity", () => {
   it("wallet1 provides lp, transfers half to wallet2, wallet2 removes lp", () => {
     // STEP 1 - Mint Street
-    const communityMint = simnet.callPublicFn(
+
+    const COMMUNITY_MINT_AMOUNT = 1000000000000000
+    let circulatingSupply = 0;
+    let communityMinted = 0;
+
+    const communityMint1 = simnet.callPublicFn(
       "street-token",
       "community-mint",
-      [],
+      [Cl.uint(COMMUNITY_MINT_AMOUNT)],
       deployer
     );
-    expect(communityMint.result).toEqual(
-      Cl.ok(
-        Cl.tuple({
-          "community-mints-remaining": Cl.uint(3),
-          "circulating-supply": Cl.uint(1000000000000000),
+
+    circulatingSupply = circulatingSupply + COMMUNITY_MINT_AMOUNT;
+    communityMinted = communityMinted + COMMUNITY_MINT_AMOUNT;
+
+    expect(communityMint1.result).toEqual(
+    Cl.ok(
+      Cl.tuple({
+        "community-mint-remaining": Cl.uint(COMMUNITY_MINT_CAP - communityMinted),
+        "circulating-supply": Cl.uint(circulatingSupply),
         })
       )
     );
-    if (disp) {console.log("communityMint:", JSON.stringify(communityMint.result, null, 2))}
+    if (disp) {console.log("communityMint:", JSON.stringify(communityMint1.result, null, 2))}
+    if (disp) {console.log("circulatingSupply: ",circulatingSupply)}
+    if (disp) {console.log("communityMinted: ", communityMinted)}
 
     // Initial reserves and LP
     const INITIAL_WELSH = 1000000;

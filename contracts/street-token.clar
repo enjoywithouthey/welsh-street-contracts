@@ -10,7 +10,7 @@
 (define-constant ERR_NOT_CONTRACT_OWNER (err u901))
 (define-constant ERR_NOT_TOKEN_OWNER (err u902))
 (define-constant ERR_EXCEEDS_TOTAL_SUPPLY (err u903))
-(define-constant ERR_NO_MORE_COMMUNITY_MINT (err u904))
+(define-constant ERR_EXCEEDS_COMMUNITY_MINT_CAP (err u904))
 (define-constant ERR_EMISSION_EPOCHS (err u905))
 (define-constant ERR_EMISSION_INTERVAL (err u906))
 
@@ -35,12 +35,12 @@
 (define-public (community-mint (amount uint))
   (begin
     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+    (asserts! (< (var-get community-minted) COMMUNITY_MINT_CAP) ERR_EXCEEDS_COMMUNITY_MINT_CAP)
     (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
-    (asserts! (<= (var-get community-minted) COMMUNITY_MINT_CAP) ERR_NO_MORE_COMMUNITY_MINT)
     (try! (ft-mint? street-token amount tx-sender))
     (var-set community-minted (+ (var-get community-minted) amount))
-    (var-set circulating-supply (+ (var-get circulating-supply) amount))
-    (ok {community-mint-remaining: (- COMMUNITY_MINT_CAP (var-get community-minted)), circulating-supply: (var-get circulating-supply)})     
+    (var-set circulating-supply (+ (var-get circulating-supply) amount)) 
+    (ok {circulating-supply: (var-get circulating-supply), community-mint-remaining: (- COMMUNITY_MINT_CAP (var-get community-minted)) })     
   )
 )
 
@@ -82,8 +82,12 @@
   )
 )
 
+
 (define-read-only (get-circulating-supply)
   (ok (var-get circulating-supply)))
+
+(define-read-only (get-community-minted)
+  (ok (var-get community-minted)))
 
 (define-read-only (get-current-epoch)
   (ok (var-get emission-epoch)))

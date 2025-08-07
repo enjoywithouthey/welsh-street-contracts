@@ -22,5 +22,5 @@
   "include": [
     "node_modules/@hirosystems/clarinet-sdk/vitest-helpers/src",
     "tests"
-  ]
+, "vitestconfig.ts"  ]
 }
