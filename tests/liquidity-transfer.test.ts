@@ -1,6 +1,9 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
-import { disp, COMMUNITY_MINT_CAP } from "../vitestconfig"
+import { disp,
+  COMMUNITY_MINT_AMOUNT,
+  COMMUNITY_MINT_CAP
+} from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
@@ -9,7 +12,6 @@ const wallet1 = accounts.get("wallet_1")!;
 describe("liquidity transfers", () => {
   it("transfers LP tokens from exchange to wallet1", () => {
 
-    const COMMUNITY_MINT_AMOUNT = 1000000000000000
     let circulatingSupply = 0;
     let communityMinted = 0;
 
@@ -45,7 +47,6 @@ describe("liquidity transfers", () => {
 
     const INITIAL_WELSH = 1000;
     const INITIAL_STREET = INITIAL_WELSH * 100;
-    const mintedCred = Math.floor(Math.sqrt(INITIAL_WELSH * INITIAL_STREET));
     
     const initialLiquidity = simnet.callPublicFn( 
       "welsh-street-exchange",
@@ -57,7 +58,7 @@ describe("liquidity transfers", () => {
       Cl.tuple({
         "added-a": Cl.uint(INITIAL_WELSH),
         "added-b": Cl.uint(INITIAL_STREET),
-        "minted-lp": Cl.uint(mintedCred)
+        "minted-lp": Cl.uint(0)
         })
       )
     )

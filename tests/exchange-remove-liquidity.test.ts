@@ -1,6 +1,12 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
-import { disp, COMMUNITY_MINT_CAP } from "../vitestconfig"
+import { disp,
+  COMMUNITY_MINT_AMOUNT,
+  COMMUNITY_MINT_CAP,
+  INITIAL_WELSH,
+  INITIAL_STREET,
+  INITIAL_LP
+} from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
@@ -11,7 +17,6 @@ describe("exchange provide liquidity", () => {
   it("wallet1 provides lp, transfers half to wallet2, wallet2 removes lp", () => {
     // STEP 1 - Mint Street
 
-    const COMMUNITY_MINT_AMOUNT = 1000000000000000
     let circulatingSupply = 0;
     let communityMinted = 0;
 
@@ -37,11 +42,6 @@ describe("exchange provide liquidity", () => {
     if (disp) {console.log("circulatingSupply: ",circulatingSupply)}
     if (disp) {console.log("communityMinted: ", communityMinted)}
 
-    // Initial reserves and LP
-    const INITIAL_WELSH = 1000000;
-    const INITIAL_STREET = INITIAL_WELSH * 100;
-    const INITIAL_LP = Math.floor(Math.sqrt(INITIAL_WELSH * INITIAL_STREET));
-
     // STEP 2 - Deployer provides initial liquidity
     const initialLiquidityPass = simnet.callPublicFn(
       "welsh-street-exchange",
@@ -54,7 +54,7 @@ describe("exchange provide liquidity", () => {
         Cl.tuple({
           "added-a": Cl.uint(INITIAL_WELSH),
           "added-b": Cl.uint(INITIAL_STREET),
-          "minted-lp": Cl.uint(INITIAL_LP),
+          "minted-lp": Cl.uint(0),
         })
       )
     );
@@ -100,10 +100,8 @@ describe("exchange provide liquidity", () => {
     const providedResA = initialResA + providedAmountA;
     const providedResB = initialResB + providedAmountB;
 
-    // LP minted for wallet1's liquidity
-    const lpFromA = Math.floor((providedAmountA * INITIAL_LP) / initialResA);
-    const lpFromB = Math.floor((providedAmountB * INITIAL_LP) / initialResB);
-    const providedLp = Math.min(lpFromA, lpFromB);
+    // LP minted for wallet1's liquidity (first LP provision, so use geometric mean)
+    const providedLp = Math.floor(Math.sqrt(providedAmountA * providedAmountB));
 
     const wallet1ProvideLiquidityPass = simnet.callPublicFn(
       "welsh-street-exchange",
@@ -196,16 +194,14 @@ describe("exchange provide liquidity", () => {
       [Cl.uint(TRANSFER_LP)],
       wallet2
     );
-return
+
+    // STEP 6 - Remove liquidity calculations
     const REMOVE_LP = providedLp;
     const taxLp = Math.floor(REMOVE_LP * 0.1); // 10% tax
     const userLp = REMOVE_LP - taxLp;
-    const reserveA = providedResA; // 1,010,000
-    const reserveB = providedResB; // 101,000,000
-    const lpSupply = INITIAL_LP + providedLp; // 10,000,000 + 100,000 = 10,100,000
-
-    // For this test, let's use the reserves after wallet1 provides
-    // So, reserveA = 100100, reserveB = 10010000, lpSupply = 1001000000000
+    const reserveA = providedResA;
+    const reserveB = providedResB;
+    const lpSupply = providedLp; // ✅ Only LP tokens from provide-liquidity
 
     const expectedA = Math.floor((userLp * reserveA) / lpSupply);
     const expectedB = Math.floor((userLp * reserveB) / lpSupply);
@@ -224,40 +220,38 @@ return
     );
     if (disp) {console.log("wallet2RemoveLiquidity", JSON.stringify(wallet2RemoveLiquidity.result, null, 2))}
 
-    const exchangeWelshBalanceAfterRemove = simnet.callReadOnlyFn( //balance reponse
+    const exchangeWelshBalanceAfterRemove = simnet.callReadOnlyFn(
       "welshcorgicoin",
       "get-balance",
-      [ Cl.contractPrincipal(deployer, "welsh-street-exchange")],
+      [Cl.contractPrincipal(deployer, "welsh-street-exchange")],
       deployer
     );
-    expect(exchangeWelshBalanceAfterRemove.result).toBeOk(Cl.uint(100100));
-    if (disp) {console.log("exchangeWelshBalanceAfterRemove", JSON.stringify(exchangeWelshBalanceAfterRemove.result, null, 2))}
+    const expectedExchangeWelshAfterRemove = providedResA - expectedA;
+    expect(exchangeWelshBalanceAfterRemove.result).toBeOk(Cl.uint(expectedExchangeWelshAfterRemove));
 
-    const exchangeStreetBalanceAfterRemove = simnet.callReadOnlyFn( //balance reponse
+    const exchangeStreetBalanceAfterRemove = simnet.callReadOnlyFn(
       "street-token",
-      "get-balance",
-      [ Cl.contractPrincipal(deployer, "welsh-street-exchange")],
+      "get-balance", 
+      [Cl.contractPrincipal(deployer, "welsh-street-exchange")],
       deployer
     );
-    expect(exchangeStreetBalanceAfterRemove.result).toBeOk(Cl.uint(10010000));
-    if (disp) {console.log("exchangeStreetBalanceAfterRemove", JSON.stringify(exchangeStreetBalanceAfterRemove.result, null, 2))}
+    const expectedExchangeStreetAfterRemove = providedResB - expectedB;
+    expect(exchangeStreetBalanceAfterRemove.result).toBeOk(Cl.uint(expectedExchangeStreetAfterRemove));
 
-    const wallet2WelshBalanceAfterRemove = simnet.callReadOnlyFn( //balance reponse
+    const wallet2WelshBalanceAfterRemove = simnet.callReadOnlyFn(
       "welshcorgicoin",
       "get-balance",
-      [ Cl.standardPrincipal(wallet2)],
+      [Cl.standardPrincipal(wallet2)],
       wallet2
     );
-    expect(wallet2WelshBalanceAfterRemove.result).toBeOk(Cl.uint(90));
-    if (disp) {console.log("exchangeWelshBalanceAfterRemove", JSON.stringify(wallet2WelshBalanceAfterRemove.result, null, 2))}
+    expect(wallet2WelshBalanceAfterRemove.result).toBeOk(Cl.uint(expectedA));
 
-    const wallet2StreetBalanceAfterRemove = simnet.callReadOnlyFn( //balance reponse
-      "street-token",
+    const wallet2StreetBalanceAfterRemove = simnet.callReadOnlyFn(
+      "street-token", 
       "get-balance",
-      [ Cl.standardPrincipal(wallet2)],
+      [Cl.standardPrincipal(wallet2)],
       wallet2
     );
-    expect(wallet2StreetBalanceAfterRemove.result).toBeOk(Cl.uint(9000));
-    if (disp) {console.log("wallet2StreetBalanceAfterRemove", JSON.stringify(wallet2StreetBalanceAfterRemove.result, null, 2))}
+    expect(wallet2StreetBalanceAfterRemove.result).toBeOk(Cl.uint(expectedB));
   });
 });

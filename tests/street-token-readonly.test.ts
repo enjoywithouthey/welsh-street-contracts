@@ -3,8 +3,6 @@ import { describe, expect, it } from "vitest";
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
-const wallet1 = accounts.get("wallet_1")!;
-const wallet2 = accounts.get("wallet_2")!;
 
 describe("street token read only tests", () => {
   it("get-circulating-supply", () => {

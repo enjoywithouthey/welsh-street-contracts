@@ -1,5 +1,5 @@
-;; title: Welsh Street Token
-;; description: $STREET is the rewards token for the Welsh Street Exchange.
+;; Welsh Street Token
+;; by @enjoywithouthey
 
 (impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
 ;; (impl-trait .welsh-street-transformer-trait.transformer-trait)
@@ -21,13 +21,13 @@
 (define-constant TOKEN_NAME "Welsh Street Token")
 (define-constant TOKEN_SYMBOL "STREET")
 (define-constant TOKEN_DECIMALS u6)
-(define-constant TOKEN_SUPPLY u10000000000000000) ;;10_000_000_000
-(define-constant COMMUNITY_MINT_CAP u4000000000000000) ;;4_000_000_000
-(define-constant EMISSION_EPOCHS u13) ;;420000 on mainnet
+(define-constant TOKEN_SUPPLY u10000000000) ;; 10 billion (10,000,000,000)
+(define-constant COMMUNITY_MINT_CAP u4000000000) ;; 4 billion (4,000,000,000)
+(define-constant EMISSION_EPOCHS u13) ;; 420000 on mainnet
 (define-constant EMISSION_INTERVAL u1)
 
 (define-data-var emission-epoch uint u0)
-(define-data-var emission-amount uint u1000000000000000) ;;THIS VALUE FOR TESTING need halving equation
+(define-data-var emission-amount uint u10000000) ;; 10 million per emission (reasonable for testing)
 (define-data-var last-mint-block uint u1)
 (define-data-var circulating-supply uint u0)
 (define-data-var community-minted uint u0)
@@ -81,7 +81,6 @@
     (ok true)
   )
 )
-
 
 (define-read-only (get-circulating-supply)
   (ok (var-get circulating-supply)))

@@ -80,6 +80,16 @@ describe("street token emission minting", () => {
       const mineEmptyBurnBlock = simnet.mineEmptyBurnBlock();
       expect(mineEmptyBurnBlock).toBeDefined();
       if (disp) console.log(`Mined empty burn block #${i + 1}`);
+      if (disp) {
+        const rewardPoolInfo = simnet.callReadOnlyFn(
+          "welsh-street-rewards",
+          "get-reward-pool-info",
+          [],
+          deployer
+        );
+        console.log("Reward Pool Info:", JSON.stringify(rewardPoolInfo.result, null, 2));
+      }
     }
+
   }); 
 });

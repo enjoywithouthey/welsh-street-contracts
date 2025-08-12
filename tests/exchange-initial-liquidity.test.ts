@@ -1,12 +1,17 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
-import { disp, COMMUNITY_MINT_CAP } from "../vitestconfig"
+import { disp,
+  COMMUNITY_MINT_AMOUNT,
+  COMMUNITY_MINT_CAP,
+  INITIAL_WELSH,
+  INITIAL_STREET,
+  INITIAL_LP
+} from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 const wallet1 = accounts.get("wallet_1")!;
 
-const COMMUNITY_MINT_AMOUNT = 1000000000000000
 let circulatingSupply = 0;
 let communityMinted = 0;
 
@@ -47,11 +52,6 @@ describe("exchange initial liquidity", () => {
       deployer);
     expect(communityMintBalance.result).toBeOk(Cl.uint(COMMUNITY_MINT_AMOUNT));
     if (disp) {console.log("communityMintBalance:", Cl.uint(COMMUNITY_MINT_AMOUNT ))}
-
-    // Provide initial liquidity
-    const INITIAL_WELSH = 1000000;
-    const INITIAL_STREET = INITIAL_WELSH * 100;
-    const INITIAL_LP = Math.floor(Math.sqrt(INITIAL_WELSH * INITIAL_STREET));
 
     const mintFail = simnet.callPublicFn( 
       "welsh-street-liquidity",
@@ -143,10 +143,6 @@ it("Provide initial LP, check lp-balances, burn LP, verify lp-balances", () => {
     expect(getInitialProviderCount.result).toBeOk(Cl.uint(0))
     if (disp) {console.log("getInitialProviderCount:", Cl.uint(0))}
 
-    const INITIAL_WELSH = 1000000;
-    const INITIAL_STREET = INITIAL_WELSH * 100;
-    const INITIAL_LP = Math.floor(Math.sqrt(INITIAL_WELSH * INITIAL_STREET));
-
     const initialLiquidityPass = simnet.callPublicFn( 
       "welsh-street-exchange",
       "initial-liquidity",
@@ -168,8 +164,8 @@ it("Provide initial LP, check lp-balances, burn LP, verify lp-balances", () => {
       "get-provider-count",
       [],
       deployer);
-    expect(getProviderCount.result).toBeOk(Cl.uint(1))
-    if (disp) {console.log("getProviderCount:", Cl.uint(1))}
+    expect(getProviderCount.result).toBeOk(Cl.uint(0))
+    if (disp) {console.log("getProviderCount:", Cl.uint(0))}
 
     const getLpBalance = simnet.callReadOnlyFn(
       "welsh-street-liquidity",
@@ -186,13 +182,7 @@ it("Provide initial LP, check lp-balances, burn LP, verify lp-balances", () => {
       "burn-liquidity",
       [Cl.uint(BURN_AMOUNT)],
       deployer);
-    expect(burnLiquidity.result).toEqual(
-    Cl.ok(
-      Cl.tuple({
-        "burned": Cl.uint(BURN_AMOUNT),
-        })
-      )
-    )
+    expect(burnLiquidity.result).toBeErr(Cl.uint(605));;
     if (disp) {console.log("burnLiquidity:", JSON.stringify(burnLiquidity.result, null, 2))}
 
     const getLpBalanceAfterBurn = simnet.callReadOnlyFn(

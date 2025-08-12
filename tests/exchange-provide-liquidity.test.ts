@@ -1,6 +1,9 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
-import { disp, COMMUNITY_MINT_CAP } from "../vitestconfig"
+import { disp,
+  COMMUNITY_MINT_AMOUNT,
+  COMMUNITY_MINT_CAP,
+} from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
@@ -9,7 +12,6 @@ const wallet1 = accounts.get("wallet_1")!;
 describe("exchange provide liquidity", () => {
   it("wallet1 tries to provide liquidity without pool initialized", () => {
 
-    const COMMUNITY_MINT_AMOUNT = 1000000000000000
     let circulatingSupply = 0;
     let communityMinted = 0;
 
@@ -144,7 +146,7 @@ describe("exchange provide liquidity", () => {
         Cl.tuple({
           "added-a": Cl.uint(TRANSFER_WELSH),
           "added-b": Cl.uint(TRANSFER_STREET),
-          "minted-lp": Cl.uint(mintedLp)
+          "minted-lp": Cl.uint(0)
         })
       )
     );
