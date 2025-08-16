@@ -42,15 +42,14 @@ describe("exchange initial liquidity", () => {
     // STEP 2 - Provide Initial Liquidity
     const initialLiquidity = simnet.callPublicFn( 
       "welsh-street-exchange",
-      "initial-liquidity",
+      "lock-liquidity",
       [Cl.uint(INITIAL_WELSH)],
       deployer);
     expect(initialLiquidity.result).toEqual(
     Cl.ok(
       Cl.tuple({
-        "added-a": Cl.uint(INITIAL_WELSH),
-        "added-b": Cl.uint(INITIAL_STREET),
-        "minted-lp": Cl.uint(0)
+        "locked-a": Cl.uint(INITIAL_WELSH),
+        "locked-b": Cl.uint(INITIAL_STREET),
         })
       )
     )
@@ -159,7 +158,6 @@ describe("exchange initial liquidity", () => {
       if (disp) {console.log("ERR_SLIPPAGE_EXCEEDED:", Cl.uint(604))}
     }
 
-
     // STEP 5 Check total rewards balance of WELSH and STREET in the rewards contract
     if (disp) { console.log("\n=== STEP 5: Check Rewards Contract Balances ==="); }
 
@@ -175,7 +173,7 @@ describe("exchange initial liquidity", () => {
         "street-balance": Cl.uint(2450),
         "total-a-in-contract": Cl.uint(50), 
         "total-a-per-share": Cl.uint(0),
-        "total-b-in-contract": Cl.uint(4900),
+        "total-b-in-contract": Cl.uint(2450),
         "total-b-per-share": Cl.uint(0),  
         "welsh-balance": Cl.uint(25),  
       })
@@ -268,7 +266,7 @@ describe("exchange initial liquidity", () => {
         "street-balance": Cl.uint(2450),
         "total-a-in-contract": Cl.uint(50), 
         "total-a-per-share": Cl.uint(0),
-        "total-b-in-contract": Cl.uint(4900),
+        "total-b-in-contract": Cl.uint(2450),
         "total-b-per-share": Cl.uint(0),  
         "welsh-balance": Cl.uint(25),  
       })

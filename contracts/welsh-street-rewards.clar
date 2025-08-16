@@ -86,28 +86,17 @@
 (define-public (update-rewards-b (amount uint))
   (let (
      (total-lp (unwrap! (contract-call? .welsh-street-liquidity get-total-supply) ERR_SUPPLY_NOT_AVAILABLE ))
-     (current-balance (unwrap! (contract-call? .street-token get-balance .welsh-street-rewards) ERR_SUPPLY_NOT_AVAILABLE ))
-     (tracked-balance (var-get total-b-in-contract))
-     ;; Calculate untracked emissions automatically
-     (untracked-emissions (if (> current-balance tracked-balance) 
-                            (- current-balance tracked-balance) 
-                            u0))
-     ;; Total new rewards = swap fees + any untracked emissions
-     (total-new-rewards (+ amount untracked-emissions))
-    )
+     (current-rewards (unwrap! (contract-call? .street-token get-balance .welsh-street-rewards) ERR_STREET_BALANCE_NOT_AVAILABLE ))
+   )
     (begin
       (if (> total-lp u0)
         (begin
-          ;; Distribute pending rewards + new rewards (including emissions)
-          (let ((total-to-distribute (+ total-new-rewards (var-get pending-rewards-b))))
+          (let ((updated-rewards (+ amount (var-get pending-rewards-b))))
             (var-set total-b-per-share
-              (+ (var-get total-b-per-share) (/ (* total-to-distribute DECIMALS) total-lp)))
+              (+ (var-get total-b-per-share) (/ (* updated-rewards DECIMALS) total-lp)))
             (var-set pending-rewards-b u0)))
-        ;; If no LP tokens exist, add to pending rewards
-        (var-set pending-rewards-b (+ (var-get pending-rewards-b) total-new-rewards)))
-        
-      ;; Update tracked balance to current balance (includes emissions)
-      (var-set total-b-in-contract current-balance)
+        (var-set pending-rewards-b (+ (var-get pending-rewards-b) amount)))
+      (var-set total-b-in-contract current-rewards) ;; <-- ADD THIS LINE
       (ok true)
     )
   )

@@ -45,7 +45,7 @@ describe("exchange initial liquidity", () => {
 
     const initialLiquidity = simnet.callPublicFn( 
       "welsh-street-exchange",
-      "initial-liquidity",
+      "lock-liquidity",
       [Cl.uint(INITIAL_WELSH)],
       deployer);
     expect(initialLiquidity.result).toEqual(

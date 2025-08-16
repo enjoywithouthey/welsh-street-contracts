@@ -21,8 +21,8 @@
 (define-constant TOKEN_NAME "Welsh Street Token")
 (define-constant TOKEN_SYMBOL "STREET")
 (define-constant TOKEN_DECIMALS u6)
-(define-constant TOKEN_SUPPLY u10000000000) ;; 10 billion (10,000,000,000)
-(define-constant COMMUNITY_MINT_CAP u4000000000) ;; 4 billion (4,000,000,000)
+(define-constant TOKEN_SUPPLY u10000000000000000) ;; 10 billion (10,000,000,000)
+(define-constant COMMUNITY_MINT_CAP u2000000000000000) ;; 4 billion (4,000,000,000)
 (define-constant EMISSION_EPOCHS u13) ;; 420000 on mainnet
 (define-constant EMISSION_INTERVAL u1)
 
@@ -35,12 +35,12 @@
 (define-public (community-mint (amount uint))
   (begin
     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
-    (asserts! (< (var-get community-minted) COMMUNITY_MINT_CAP) ERR_EXCEEDS_COMMUNITY_MINT_CAP)
+    (asserts! (<= (+ (var-get community-minted) amount) COMMUNITY_MINT_CAP) ERR_EXCEEDS_COMMUNITY_MINT_CAP)
     (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
     (try! (ft-mint? street-token amount tx-sender))
     (var-set community-minted (+ (var-get community-minted) amount))
     (var-set circulating-supply (+ (var-get circulating-supply) amount)) 
-    (ok {circulating-supply: (var-get circulating-supply), community-mint-remaining: (- COMMUNITY_MINT_CAP (var-get community-minted)) })     
+    (ok {community-mint: amount})     
   )
 )
 

@@ -7,6 +7,10 @@ import { disp,
   INITIAL_STREET,
 } from "../vitestconfig"
 
+import {
+  communityMintStreet
+} from "./__functions__";
+
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 const wallet1 = accounts.get("wallet_1")!;
@@ -15,40 +19,19 @@ const wallet2 = accounts.get("wallet_2")!;
 describe("exchange initial liquidity", () => {
   it("wallet1 swaps and wallet2 claims rewards", () => {
     // STEP 1 - Mint Street
-    const communityMint = simnet.callPublicFn(
-      "street-token",
-      "community-mint",
-      [Cl.uint(COMMUNITY_MINT_AMOUNT)],
-      deployer
-    );
-
-    let circulatingSupply = 0;
-    let communityMinted = 0;
-
-    circulatingSupply = circulatingSupply + COMMUNITY_MINT_AMOUNT;
-    communityMinted = communityMinted + COMMUNITY_MINT_AMOUNT;
-
-    expect(communityMint.result).toEqual(
-    Cl.ok(
-      Cl.tuple({
-        "community-mint-remaining": Cl.uint(COMMUNITY_MINT_CAP - communityMinted),
-        "circulating-supply": Cl.uint(circulatingSupply),
-        })
-      )
-    );
+    communityMintStreet(simnet, deployer);
 
     // STEP 2 - Provide Initial Liquidity
     const initialLiquidity = simnet.callPublicFn( 
       "welsh-street-exchange",
-      "initial-liquidity",
+      "lock-liquidity",
       [Cl.uint(INITIAL_WELSH)],
       deployer);
     expect(initialLiquidity.result).toEqual(
     Cl.ok(
       Cl.tuple({
-        "added-a": Cl.uint(INITIAL_WELSH),
-        "added-b": Cl.uint(INITIAL_STREET),
-        "minted-lp": Cl.uint(0)
+        "locked-a": Cl.uint(INITIAL_WELSH),
+        "locked-b": Cl.uint(INITIAL_STREET)
         })
       )
     )

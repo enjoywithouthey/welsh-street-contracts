@@ -1,5 +1,9 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
+import { disp,
+  COMMUNITY_MINT_AMOUNT,
+  COMMUNITY_MINT_CAP
+} from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
@@ -7,7 +11,6 @@ const wallet1 = accounts.get("wallet_1")!;
 const wallet2 = accounts.get("wallet_2")!;
 
 const amount = 10000;
-const COMMUNITY_MINT_CAP = 4000000000000000
 
 let communityMinted = 0;
 let circulatingSupply = 0

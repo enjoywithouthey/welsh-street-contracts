@@ -1,12 +1,20 @@
-import { Cl } from "@stacks/transactions";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 import { disp,
   COMMUNITY_MINT_AMOUNT,
   COMMUNITY_MINT_CAP,
   INITIAL_WELSH,
   INITIAL_STREET,
-  INITIAL_LP
+  INITIAL_LP,
+  WELSH_TRANSFER
 } from "../vitestconfig"
+
+import {
+  getBalance,
+  communityMint,
+  lockLiquidity,
+  swapAB,
+  transfer,
+} from "./__functions__";
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
@@ -15,96 +23,16 @@ const wallet1 = accounts.get("wallet_1")!;
 describe("exchange initial liquidity", () => {
   it("swap a for b test", () => {
     // STEP 1 - Mint Street
-    const communityMint = simnet.callPublicFn(
-      "street-token",
-      "community-mint",
-      [Cl.uint(COMMUNITY_MINT_AMOUNT)],
-      deployer
-    );
-
-    let circulatingSupply = 0;
-    let communityMinted = 0;
-
-    circulatingSupply = circulatingSupply + COMMUNITY_MINT_AMOUNT;
-    communityMinted = communityMinted + COMMUNITY_MINT_AMOUNT;
-
-    expect(communityMint.result).toEqual(
-    Cl.ok(
-      Cl.tuple({
-        "community-mint-remaining": Cl.uint(COMMUNITY_MINT_CAP - communityMinted),
-        "circulating-supply": Cl.uint(circulatingSupply),
-        })
-      )
-    );
-    if (disp) {console.log("communityMint:", JSON.stringify(communityMint.result, null, 2))}
-    if (disp) {console.log("circulatingSupply: ",circulatingSupply)}
-    if (disp) {console.log("communityMinted: ", communityMinted)}
+    communityMint(deployer, COMMUNITY_MINT_AMOUNT, 0, COMMUNITY_MINT_CAP, true, disp)
 
     // STEP 2 - Provide Initial Liquidity
-    const initialLiquidity = simnet.callPublicFn( 
-      "welsh-street-exchange",
-      "initial-liquidity",
-      [Cl.uint(INITIAL_WELSH)],
-      deployer);
-    expect(initialLiquidity.result).toEqual(
-    Cl.ok(
-      Cl.tuple({
-        "added-a": Cl.uint(INITIAL_WELSH),
-        "added-b": Cl.uint(INITIAL_STREET),
-        "minted-lp": Cl.uint(INITIAL_LP)
-        })
-      )
-    )
-
-    const initialLiquidityWelshBalance = simnet.callReadOnlyFn(
-      "welshcorgicoin",
-      "get-balance",
-      [Cl.contractPrincipal(deployer, "welsh-street-exchange")],
-      deployer);
-      expect(initialLiquidityWelshBalance.result).toBeOk(Cl.uint(INITIAL_WELSH));
-      if (disp) {console.log("initialLiquidityWelshBalance:", Cl.uint(INITIAL_WELSH))}
-      
-    const initialLiquidityStreetBalance = simnet.callReadOnlyFn(
-      "street-token",
-      "get-balance",
-      [Cl.contractPrincipal(deployer, "welsh-street-exchange")],
-      deployer);
-      expect(initialLiquidityStreetBalance.result).toBeOk(Cl.uint(INITIAL_STREET));
-      if (disp) {console.log("initialLiquidityStreetBalance:", Cl.uint(INITIAL_STREET))}
-        
-    const initialLiquidityCredBalance = simnet.callReadOnlyFn(
-      "welsh-street-liquidity",
-      "get-balance",
-      [Cl.contractPrincipal(deployer, "welsh-street-exchange")],
-      deployer);
-      expect(initialLiquidityCredBalance.result).toBeOk(Cl.uint(INITIAL_LP));
-      if (disp) {console.log("initialLiquidityBalance:", Cl.uint(INITIAL_LP))}
+    lockLiquidity(deployer, INITIAL_WELSH, disp)
 
     // STEP 3 - Transfer Welsh wallet1
-    const WELSH_TRANSFER = 1000000;
+    transfer("welshcorgicoin", deployer, wallet1, WELSH_TRANSFER, disp)
     
-    const welshTransfer = simnet.callPublicFn(
-      "welshcorgicoin",
-      "transfer",
-      [
-        Cl.uint(WELSH_TRANSFER),
-        Cl.standardPrincipal(deployer),
-        Cl.standardPrincipal(wallet1),
-        Cl.none(),
-      ],
-      deployer);
-    expect(welshTransfer.result).toBeOk(Cl.bool(true));
-
-    const welshTransferBalance = simnet.callReadOnlyFn(
-      "welshcorgicoin",
-      "get-balance",
-      [Cl.standardPrincipal(wallet1)],
-      wallet1
-    );
-    expect(welshTransferBalance.result).toBeOk(Cl.uint(WELSH_TRANSFER)); 
-    
-  // STEP 4 - Set up a large swap amount
-    const WELSH_SWAP = 10000; //
+    // STEP 4 - Set up a large swap amount
+    const WELSH_SWAP = 1000000; //
     const SLIP_MAX = 800; // basis points, 8% slippage
     const FEE_BASIS = 10000;
 
@@ -136,7 +64,7 @@ describe("exchange initial liquidity", () => {
     let minB = Math.floor((bOut * (FEE_BASIS - SLIP_MAX)) / FEE_BASIS);
 
     if (disp) {
-      console.log("=== UPDATED TEST CALCULATIONS ===");
+      console.log("=== SWAP A B CALCULATIONS ===");
       console.log("aIn:", aIn);
       console.log("resA:", resA);
       console.log("resB:", resB);
@@ -156,50 +84,11 @@ describe("exchange initial liquidity", () => {
       console.log("minB:", minB);
     }
     
-    const welsh2StreetSwap = simnet.callPublicFn(
-      "welsh-street-exchange",
-      "swap-a-b",
-      [
-        Cl.uint(WELSH_SWAP),
-        Cl.uint(SLIP_MAX),
-      ],
-      wallet1);
+    swapAB(wallet1, WELSH_SWAP, slip, SLIP_MAX, aIn, bOutNet, aFee, bFee, disp)
 
-    if (slip <= SLIP_MAX) {
-      expect(welsh2StreetSwap.result).toEqual(
-        Cl.ok(
-          Cl.tuple({
-            "a-in": Cl.uint(aIn), 
-            "b-out-net": Cl.uint(bOutNet),
-            "fee-a": Cl.uint(aFee), 
-            "fee-b": Cl.uint(bFee), 
-          })
-        )
-      );
-
-      // STEP 5 - Check balances
-      const welsh2StreetSwapBalanceWallet1 = simnet.callReadOnlyFn(
-        "welshcorgicoin",
-        "get-balance",
-        [Cl.standardPrincipal(wallet1)],
-        wallet1
-      );
-      expect(welsh2StreetSwapBalanceWallet1.result).toBeOk(Cl.uint(WELSH_TRANSFER - aIn));
-
-      // Check Street token balance (user should receive bOutNet)
-      const streetBalanceWallet1 = simnet.callReadOnlyFn(
-        "street-token",
-        "get-balance", 
-        [Cl.standardPrincipal(wallet1)],
-        wallet1
-      );
-      expect(streetBalanceWallet1.result).toBeOk(Cl.uint(bOutNet));
-
-    } else {
-      expect(welsh2StreetSwap.result).toEqual(
-        Cl.error(Cl.uint(604)) // ERR_SLIPPAGE_EXCEEDED
-      );
-      if (disp) {console.log("ERR_SLIPPAGE_EXCEEDED:", Cl.uint(604))}
-    }
+    // STEP 5 - Check Welsh and Street balances
+    const expectedWelshBalance = WELSH_TRANSFER - aIn
+    getBalance(wallet1, "welshcorgicoin", BigInt(expectedWelshBalance), disp)
+    getBalance(wallet1, "street-token", BigInt(bOutNet), disp)
   })
 });

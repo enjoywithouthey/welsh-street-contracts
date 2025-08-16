@@ -43,7 +43,6 @@
     (new-balance (- prev-balance amount))
   )
     (begin
-      (asserts! (is-eq contract-caller .welsh-street-exchange) ERR_NOT_CONTRACT_OWNER)
       (asserts! (>= prev-balance amount) ERR_NEGATIVE_BURN)
       (try! (update-lp-balance tx-sender new-balance))
       (try! (ft-burn? cred-token amount tx-sender))

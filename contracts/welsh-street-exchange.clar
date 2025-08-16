@@ -16,49 +16,49 @@
 (define-constant FEE_BASIS u10000)
 (define-constant TAX u1000) ;; 10% tax on liquidity withdrawals
 
-(define-data-var is-initialized bool false)
 (define-data-var reserve-a uint u0)
 (define-data-var reserve-b uint u0)
 (define-data-var swap-fee uint u50) ;; 50 is 0.5% at 10000 basis points, on each side = ~1 total
 
-(define-public (burn-liquidity (amount uint))
-  (let (
-      (contract-principal (as-contract tx-sender))
-      (burn-balance (unwrap! (as-contract (contract-call? .welsh-street-liquidity get-balance contract-principal)) (err u110)))
-    )
-    (begin
-      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
-      (asserts! (> amount u0) ERR_ZERO_AMOUNT)
-      (asserts! (>= burn-balance amount) ERR_NO_TOKEN_TO_BURN)
-      (as-contract (contract-call? .welsh-street-liquidity burn amount))
-    )
-  )
-)
+;; (define-public (burn-liquidity (amount uint))
+;;   (let (
+;;       (contract-principal (as-contract tx-sender))
+;;       (burn-balance (unwrap! (as-contract (contract-call? .welsh-street-liquidity get-balance contract-principal)) (err u110)))
+;;     )
+;;     (begin
+;;       (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
+;;       (asserts! (> amount u0) ERR_ZERO_AMOUNT)
+;;       (asserts! (>= burn-balance amount) ERR_NO_TOKEN_TO_BURN)
+;;       (as-contract (contract-call? .welsh-street-liquidity burn amount))
+;;     )
+;;   )
+;; )
+
+;; MAY NEED TO BRING BACK INITITALIZE LIQUIDITY ONLY FOR THE DEPLOYER
+
 
 ;; #[allow(unchecked_data)]
-(define-public (initial-liquidity (amount-a uint))
+(define-public (lock-liquidity (amount-a uint))
   (let (
     (amount-b (* amount-a INITIALIZE_RATIO))
   )
     (begin
-      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
-      (asserts! (is-eq (var-get is-initialized) false) ERR_NOT_INITIALIZED)
       (asserts! (> amount-a u0) ERR_ZERO_AMOUNT)
       (try! (contract-call? .welshcorgicoin transfer amount-a tx-sender .welsh-street-exchange none))
       (try! (contract-call? .street-token transfer amount-b tx-sender .welsh-street-exchange none))
-      (var-set reserve-a amount-a)
-      (var-set reserve-b amount-b)
-      (var-set is-initialized true)
-      (print { added-a: amount-a, added-b: amount-b, minted-lp: u0 })
-      (ok { added-a: amount-a, added-b: amount-b, minted-lp: u0 })
+      (var-set reserve-a (+ (var-get reserve-a) amount-a))
+      (var-set reserve-b (+ (var-get reserve-b) amount-b))
+      (print { locked-a: amount-a, locked-b: amount-b })
+      (ok { locked-a: amount-a, locked-b: amount-b })
     )
   )
 )
 
 ;; #[allow(unchecked_data)]
 (define-public (provide-liquidity (amount-a uint))
-  (begin
-    (asserts! (is-eq (var-get is-initialized) true) ERR_NOT_INITIALIZED)
+  (begin  
+    (asserts! (> (var-get reserve-a) u0) ERR_NOT_INITIALIZED)
+    (asserts! (> (var-get reserve-b) u0) ERR_NOT_INITIALIZED)
     (let (
       (res-a (var-get reserve-a))
       (res-b (var-get reserve-b))
@@ -246,4 +246,16 @@
     (to principal)
   )
   (as-contract (contract-call? token transfer amount tx-sender to none))
+)
+
+(define-read-only (get-locked-liquidity)
+  (let (
+    (res-a (var-get reserve-a))
+    (res-b (var-get reserve-b))
+    (lp-supply (unwrap-panic (contract-call? .welsh-street-liquidity get-total-supply)))
+    (claimed-a (/ (* lp-supply res-a) lp-supply)) ;; All LP tokens can claim up to res-a
+    (claimed-b (/ (* lp-supply res-b) lp-supply))
+  )
+    (ok { locked-a: (- res-a claimed-a), locked-b: (- res-b claimed-b) })
+  )
 )

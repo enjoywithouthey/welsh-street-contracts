@@ -1,11 +1,11 @@
 import { Cl } from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
+import { disp,
+  EMISSION_AMOUNT 
+} from "../vitestconfig"
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
-const disp = true
-
-const EMISSION_AMOUNT = 1000000000000000; // change in contract for testing
 
 describe("street token emission minting", () => {
   it("emission mint until epochs reached", () => {
@@ -27,7 +27,7 @@ describe("street token emission minting", () => {
       );
 
       if (result.result.type === "err") {
-        expect(result.result).toEqual(Cl.error(Cl.uint(903)));
+        expect(result.result).toEqual(Cl.error(Cl.uint(905)));
         if (disp) console.log(`emission-mint #${i + 1}: ERROR`, JSON.stringify(result.result, null, 2));
         break; // Stop the loop if you want to stop on error
       } else {
