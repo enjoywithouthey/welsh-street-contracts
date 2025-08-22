@@ -2,35 +2,33 @@
 ;; by @enjoywithouthey
 
 (impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
-;; (impl-trait .welsh-street-transformer-trait.transformer-trait)
-;; (use-trait transformer-trait .welsh-street-transformer-trait.transformer-trait)
+;; (impl-trait .transformer-trait.transformer-trait)
+;; (use-trait transformer-trait .transformer-trait.transformer-trait)
 
 (define-fungible-token street-token)
 
 (define-constant ERR_NOT_CONTRACT_OWNER (err u901))
 (define-constant ERR_NOT_TOKEN_OWNER (err u902))
-(define-constant ERR_EXCEEDS_TOTAL_SUPPLY (err u903))
-(define-constant ERR_EXCEEDS_COMMUNITY_MINT_CAP (err u904))
-(define-constant ERR_EMISSION_EPOCHS (err u905))
-(define-constant ERR_EMISSION_INTERVAL (err u906))
+(define-constant ERR_EMISSION_EPOCHS (err u903))
+(define-constant ERR_EMISSION_INTERVAL (err u904))
+(define-constant ERR_EXCEEDS_TOTAL_SUPPLY (err u905))
+(define-constant ERR_EXCEEDS_COMMUNITY_MINT_CAP (err u906))
 
+(define-constant COMMUNITY_MINT_CAP u4000000000000000) ;; 4 billion (4,000,000,000)
 (define-constant CONTRACT_OWNER tx-sender)
+(define-constant EMISSION_EPOCHS u10) ;; 420000 on mainnet
+(define-constant EMISSION_INTERVAL u1)
+(define-constant TOKEN_DECIMALS u6)
+(define-constant TOKEN_NAME "Welsh Street Token")
+(define-constant TOKEN_SUPPLY u10000000000000000) ;; 10 billion (10,000,000,000)
+(define-constant TOKEN_SYMBOL "STREET")
 (define-constant TOKEN_URI u"")
 ;; (define-data-var TOKEN_URI (optional (string-utf8 256)) (some u"")
 
-(define-constant TOKEN_NAME "Welsh Street Token")
-(define-constant TOKEN_SYMBOL "STREET")
-(define-constant TOKEN_DECIMALS u6)
-(define-constant TOKEN_SUPPLY u10000000000000000) ;; 10 billion (10,000,000,000)
-(define-constant COMMUNITY_MINT_CAP u2000000000000000) ;; 4 billion (4,000,000,000)
-(define-constant EMISSION_EPOCHS u13) ;; 420000 on mainnet
-(define-constant EMISSION_INTERVAL u1)
-
-(define-data-var emission-epoch uint u0)
-(define-data-var emission-amount uint u10000000) ;; 10 million per emission (reasonable for testing)
-(define-data-var last-mint-block uint u1)
-(define-data-var circulating-supply uint u0)
 (define-data-var community-minted uint u0)
+(define-data-var emission-amount uint u10000000000) ;; 10 million per emission (reasonable for testing)    
+(define-data-var emission-epoch uint u0)
+(define-data-var last-mint-block uint u1)
 
 (define-public (community-mint (amount uint))
   (begin
@@ -39,27 +37,28 @@
     (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
     (try! (ft-mint? street-token amount tx-sender))
     (var-set community-minted (+ (var-get community-minted) amount))
-    (var-set circulating-supply (+ (var-get circulating-supply) amount)) 
     (ok {community-mint: amount})     
   )
 )
 
 (define-public (emission-mint)
   (let (
+      (amount (var-get emission-amount))
       (current-block burn-block-height)
       (last-mint (var-get last-mint-block))
-      (amount (var-get emission-amount))
     )
     (begin
       (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_NOT_CONTRACT_OWNER)
       (asserts! (<= (+ (ft-get-supply street-token) amount) TOKEN_SUPPLY) ERR_EXCEEDS_TOTAL_SUPPLY)
-      (asserts! (not (is-eq current-block last-mint)) ERR_EMISSION_INTERVAL)
       (asserts! (< (var-get emission-epoch) EMISSION_EPOCHS) ERR_EMISSION_EPOCHS)
-      (try! (ft-mint? street-token amount .welsh-street-rewards))
-      (var-set circulating-supply (+ (var-get circulating-supply) amount))
+      (asserts! (not (is-eq current-block last-mint)) ERR_EMISSION_INTERVAL)
+      (try! (ft-mint? street-token amount .rewards))
       (var-set emission-epoch (+ (var-get emission-epoch) u1))
       (var-set last-mint-block current-block)
-      (ok { circulating-supply: (var-get circulating-supply), emission-amount: amount, emission-block: current-block, epochs-completed: (var-get emission-epoch) })
+      (ok { 
+        emission-block: current-block, 
+        emission-epoch: (var-get emission-epoch),
+        emission-mint: amount }) 
     )
   )
 )
@@ -82,9 +81,6 @@
   )
 )
 
-(define-read-only (get-circulating-supply)
-  (ok (var-get circulating-supply)))
-
 (define-read-only (get-community-minted)
   (ok (var-get community-minted)))
 
@@ -94,8 +90,8 @@
 (define-read-only (get-balance (who principal))
   (ok (ft-get-balance street-token who)))
 
-(define-read-only (get-total-supply)
-  (ok (ft-get-supply street-token)))
+(define-read-only (get-decimals)
+  (ok TOKEN_DECIMALS))
 
 (define-read-only (get-name)
   (ok TOKEN_NAME))
@@ -103,11 +99,11 @@
 (define-read-only (get-symbol)
   (ok TOKEN_SYMBOL))
 
-(define-read-only (get-decimals)
-  (ok TOKEN_DECIMALS))
-
 (define-read-only (get-token-uri) 
   (ok (some TOKEN_URI)))
+
+(define-read-only (get-total-supply)
+  (ok (ft-get-supply street-token)))
 
 ;; SIP-010 function: Returns the URI containing token metadata
 ;; (define-read-only (get-token-uri)

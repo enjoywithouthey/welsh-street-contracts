@@ -68,14 +68,14 @@ plan:
     - id: 1
       transactions:
         - emulated-contract-publish:
+            contract-name: liquidity
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/liquidity.clar
+            clarity-version: 3
+        - emulated-contract-publish:
             contract-name: street-token
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/street-token.clar
-            clarity-version: 3
-        - emulated-contract-publish:
-            contract-name: welsh-street-liquidity
-            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/welsh-street-liquidity.clar
             clarity-version: 3
         - emulated-contract-publish:
             contract-name: welshcorgicoin
@@ -83,13 +83,13 @@ plan:
             path: contracts/welshcorgicoin.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: welsh-street-rewards
+            contract-name: rewards
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/welsh-street-rewards.clar
+            path: contracts/rewards.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: welsh-street-exchange
+            contract-name: exchange
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/welsh-street-exchange.clar
+            path: contracts/exchange.clar
             clarity-version: 3
       epoch: "3.1"

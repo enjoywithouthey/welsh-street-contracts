@@ -1,48 +1,41 @@
 import { Cl } from "@stacks/transactions";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
+import { disp } from "../vitestconfig"
+
+import {
+  getCurrentEpoch,
+  getDecimals,
+  getName,
+  getSymbol,
+  getTokenUri,
+  getTotalSupply,
+} from "./__functions__";
 
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 
-describe("liquidity read only functions", () => {
-  it("get-name", () => {
-    const getName = simnet.callReadOnlyFn(
-      "welsh-street-liquidity",
-      "get-name",
-      [],
-      deployer);
-  
-      expect(getName.result).toBeOk(Cl.stringAscii("Welsh Street Liquidity Token"))
+describe("=== READ ONLY ===", () => {
+  it("=== GET CURRENT EPOCH ===", () => {
+    getCurrentEpoch(deployer, 0, disp)
   });
   
-  it("get-symbol", () => {
-    const getSymbol = simnet.callReadOnlyFn(
-      "welsh-street-liquidity",
-      "get-symbol",
-      [],
-      deployer);
-  
-      expect(getSymbol.result).toBeOk(Cl.stringAscii("CRED"))
-  }); 
+  it("=== GET DECIMALS ===", () => {
+    getDecimals(deployer, "liquidity", 6, disp)
+  });
 
-  it("get-decimals", () => {
-    const getDecimals = simnet.callReadOnlyFn(
-      "welsh-street-liquidity",
-      "get-decimals",
-      [],
-      deployer);
-  
-      expect(getDecimals.result).toBeOk(Cl.uint(6))
+  it("=== GET NAME ===", () => {
+    getName(deployer, "liquidity", "Welsh Street Liquidity Token", disp)
   });
   
-//    it("get-token-uri", () => {
-//     const getTokenUri = simnet.callReadOnlyFn(
-//       "welsh-street-liquidity",
-//       "get-token-uri",
-//       [],
-//       deployer);
+  it("=== GET SYMBOL ===", () => {
+    getSymbol(deployer, "liquidity", "CRED", disp)
+  });
   
-//       expect(getTokenUri.result).toBeOk(Cl.stringAscii("NEED URI"))
-//   }); 
-
+  it("=== GET TOKEN URI ===", () => {
+    getTokenUri(deployer, "street-token", "", disp)
+  });
+  
+  it("=== GET TOTAL SUPPLY ===", () => {
+    getTotalSupply(deployer, "street-token", 0n, disp)
+  });
 });

@@ -16,21 +16,19 @@
 (define-constant TOKEN_SYMBOL "CRED")
 (define-constant TOKEN_DECIMALS u6)
 
-(define-data-var total-supply uint u0)
 (define-data-var provider-count uint u0)
-(define-map lp-balances { account: principal } uint)
+(define-map balances-lp { account: principal } uint)
 
 ;; #[allow(unchecked_data)]
 (define-public (mint (amount uint))
   (let (
-      (prev-balance (default-to u0 (map-get? lp-balances { account: tx-sender })))
-      (new-balance (+ prev-balance amount))
+      (balance-prev (default-to u0 (map-get? balances-lp { account: tx-sender })))
+      (balance-new (+ balance-prev amount))
     )
     (begin
-      (asserts! (is-eq contract-caller .welsh-street-exchange) ERR_NOT_CONTRACT_OWNER)
+      (asserts! (is-eq contract-caller .exchange) ERR_NOT_CONTRACT_OWNER)
       (try! (ft-mint? cred-token amount tx-sender))
-      (var-set total-supply (+ (var-get total-supply) amount))
-      (try! (update-lp-balance tx-sender new-balance))
+      (try! (update-balance-lp tx-sender balance-new))
       (ok {minted: amount})
     )
   )
@@ -39,14 +37,13 @@
 ;; #[allow(unchecked_data)]
 (define-public (burn (amount uint))
   (let (
-    (prev-balance (default-to u0 (map-get? lp-balances { account: tx-sender })))
-    (new-balance (- prev-balance amount))
+    (balance-prev (default-to u0 (map-get? balances-lp { account: tx-sender })))
+    (balance-new (- balance-prev amount))
   )
     (begin
-      (asserts! (>= prev-balance amount) ERR_NEGATIVE_BURN)
-      (try! (update-lp-balance tx-sender new-balance))
+      (asserts! (>= balance-prev amount) ERR_NEGATIVE_BURN)
+      (try! (update-balance-lp tx-sender balance-new))
       (try! (ft-burn? cred-token amount tx-sender))
-      (var-set total-supply (- (var-get total-supply) amount))
       (ok {burned: amount})
     )
   )
@@ -63,15 +60,15 @@
     ;; #[filter(amount, contract-caller)]
     (asserts! (is-eq tx-sender sender) ERR_NOT_TOKEN_OWNER)
     (let (
-      (sender-prev (default-to u0 (map-get? lp-balances { account: sender })))
-      (recipient-prev (default-to u0 (map-get? lp-balances { account: recipient })))
+      (sender-prev (default-to u0 (map-get? balances-lp { account: sender })))
+      (recipient-prev (default-to u0 (map-get? balances-lp { account: recipient })))
       (sender-new (- sender-prev amount))
       (recipient-new (+ recipient-prev amount))
     )
       (begin
         (asserts! (>= sender-prev amount) ERR_NEGATIVE_BURN)
-        (try! (update-lp-balance sender sender-new))
-        (try! (update-lp-balance recipient recipient-new))
+        (try! (update-balance-lp sender sender-new))
+        (try! (update-balance-lp recipient recipient-new))
         (try! (ft-transfer? cred-token amount sender recipient))
         (match memo
           memo-content (print memo-content)
@@ -83,24 +80,24 @@
   )
 )
 
-(define-private (update-lp-balance (user principal) (amount uint))
+(define-private (update-balance-lp (user principal) (amount uint))
   (let (
-      (prev-balance (default-to u0 (map-get? lp-balances { account: user })))
+      (balance-prev (default-to u0 (map-get? balances-lp { account: user })))
     )
     (begin
-      (if (and (> amount u0) (is-eq prev-balance u0))
+      (if (and (> amount u0) (is-eq balance-prev u0))
         (var-set provider-count (+ (var-get provider-count) u1))
         true
       )
 
-      (if (and (is-eq amount u0) (> prev-balance u0))
+      (if (and (is-eq amount u0) (> balance-prev u0))
         (var-set provider-count (- (var-get provider-count) u1))
         true
       )
 
       (if (> amount u0)
-        (map-set lp-balances { account: user } amount)
-        (map-delete lp-balances { account: user })
+        (map-set balances-lp { account: user } amount)
+        (map-delete balances-lp { account: user })
       )
 
       (if false
@@ -111,8 +108,8 @@
   )
 )
 
-(define-read-only (get-user-lp-balance (user principal))
-  (ok (default-to u0 (map-get? lp-balances { account: user }))))
+(define-read-only (get-user-balance-lp (user principal))
+  (ok (default-to u0 (map-get? balances-lp { account: user }))))
 
 (define-read-only (get-provider-count)
   (ok (var-get provider-count)))
